@@ -8,7 +8,9 @@
 % Finite Impulse Response Filter Tests!                                   %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Load coefficients from .mat file
+% Coefficients are for same filter specs, but one is FIR, other IIR
 load('fircoefficients.mat');
+load('iircoefficients.mat');
 
 % Create some 100ms of sinusoids to pass into the filters, sampled at
 % 20 kHz
@@ -32,16 +34,31 @@ for j = 1:length(frequencies)
    outputs(j, :) = firFilter(Num, inputs(j, :)); 
 end
 
-% Get the magnitude of the output and plot it as a bode plot
-% TODO
+% Create the output matrix
+iiroutputs = zeros(length(frequencies), length(t));
+
+% Get the coefficients from the SOS and gains
+[b, a] = sos2tf(SOS, G);
+
+% Create an impulse for debugging
+%impulse = [1 zeros(1, length(t)-1)];
+
+% Get the filtered outputs for each frequency
+for i = 1:length(frequencies)
+    iiroutputs(i, :) = iirFilter(b, a, inputs(i,:), '1');
+end
+
+figure
+subplot(2,1,1)
+% Plot the outputs of a passband signal, Fp signal, Fs signal, stopband
 plot(t, outputs(1,:), t, outputs(9,:), t, outputs(10,:), t, outputs(12,:))
 xlabel('Time (s)')
 ylabel('Amplitude')
 title('Output Response of FIR Filter, Fp = 9600, Fs = 12000')
 legend('10 Hz', '9.6 kHz', '12 kHz', '20 kHz') 
-
-% Create a low pass butterworth filter
-[n, Wn] = buttord(1000/(fs/2), 5e3/(fs/2), 1, 80); 
-
-% B is the numerator in MATLAB, A is the denominator
-[b, a] = butter(n, Wn);
+subplot(2,1,2)
+plot(t, iiroutputs(1,:), t, iiroutputs(9,:), t, iiroutputs(10,:), t, iiroutputs(12,:))
+title('Output Response of Direct Form 1 IIR Filter, Fp = 9600, Fs = 12000')
+xlabel('Time (s)')
+ylabel('Amplitude')
+legend('10 Hz', '9.6 kHz', '12 kHz', '20 kHz')
