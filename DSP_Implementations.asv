@@ -42,7 +42,7 @@ form1outputs = zeros(length(frequencies), length(t));
 
 % Get the filtered outputs for each frequency using IIR Form 1
 for i = 1:length(frequencies)
-    form1outputs(i, :) = iirFilterForm1(b, a, inputs(i,:));
+    form1outputs(i, :) = iirFilter(b, a, inputs(i,:), '1');
 end
 
 % Create the matrix to hold our IIR Form 2 outputs
@@ -50,20 +50,14 @@ form2outputs = zeros(length(frequencies), length(t));
 
 % Filter the inputs using the Form 2 variant
 for i = 1:length(frequencies)
-    form2outputs(i, :) = iirFilterForm2(b, a, inputs(i, :));
+    form2outputs(i, :) = iirFilter(b, a, inputs(i, :), '2');
 end
 
-% Handles for timing the two forms of the IIR filter, plus FIR filter
-func1 = @() iirFilterForm1(b, a, inputs(10, :));
+% Handles for timing the two forms of the IIR filter
+func1 = @() iirFilter(b, a, inputs(10, :), '2');
 t1 = timeit(func1)
 
-func2 = @() iirFilterForm2(b, a, inputs(10, :));
-t2 = timeit(func2)
-
-func3 = @() firFilter(Num, inputs(10, :));
-t3 = timeit(func3)
-
-% Result from a perfectly clear workspace: 
+func2 = @
 
 figure
 subplot(3,1,1)
