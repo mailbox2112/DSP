@@ -55,13 +55,28 @@ end
 
 % Handles for timing the two forms of the IIR filter, plus FIR filter
 func1 = @() iirFilterForm1(b, a, inputs(10, :));
-t1 = timeit(func1)
-
 func2 = @() iirFilterForm2(b, a, inputs(10, :));
-t2 = timeit(func2)
-
 func3 = @() firFilter(Num, inputs(10, :));
-t3 = timeit(func3)
+
+% Perform the filtering 1000 times and average the execution time
+sum = 0;
+for i = 1:100
+    sum = sum + timeit(func1);
+end
+form1time = sum / 100
+
+
+sum = 0;
+for i = 1:100
+    sum = sum + timeit(func2);
+end
+form2time = sum / 100
+
+sum = 0;
+for i = 1:100
+    sum = sum + timeit(func3);
+end
+firtime = sum / 100
 
 % Result from a perfectly clear workspace: 
 
