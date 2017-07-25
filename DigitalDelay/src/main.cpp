@@ -1,4 +1,5 @@
 #include "em_adc.h"
+#include "em_dac.h"
 #include "em_chip.h"
 #include "em_cmu.h"
 #include "em_device.h"
@@ -17,7 +18,13 @@
 #define ADC_CLOCK 11e6
 
 // Evil global variable for the sample we're gathering
-uint32_t sampleValue;
+uint16_t sampleValue;
+
+// Evil counter variable
+int counter = 0;
+
+// Evil buffer
+uint16_t delaySamples[4000];
 
 /**
  * Even IRQ handler for GPIO pins
@@ -39,10 +46,26 @@ void GPIO_ODD_IRQHandler(void) {
  */
 void TIMER0_IRQHandler(void) {
 	TIMER0->IFC |= TIMER0->IF;
+	if(counter == 3999) {
+		counter = 0;
+	} else {
+		counter++;
+	}
 
+	int output = 0;
 	// TODO: Processing of input signal, checking of potentiometers, checking of modulation switch
 	// When pinging the ADC channel for the potentiometers, need to change
 	// which channel the ADC scan originates from
+	(counter == 0) ? output = sampleValue + 0.9*delaySamples[4000-1] : output = sampleValue + 0.9*delaySamples[counter];
+	/*if(counter == 0) {
+		DAC0->CH0DATA = output << 1;
+	} else {
+		DAC0->CH0DATA = output << 1;
+	}*/
+
+	DAC0->CH0DATA = sampleValue;
+
+	delaySamples[counter] = output << 1;
 }
 
 /**
@@ -83,10 +106,12 @@ void adcSetup(void) {
 	init.timebase = ADC_TimebaseCalc(0);
 	init.prescale = ADC_PrescaleCalc(ADC_CLOCK, 0);
 	init.warmUpMode = adcWarmupKeepADCWarm;
+	singleInit.reference = adcRefVDD;
 	ADC_Init(ADC0, &init);
 
 	// Input VDD/3 for testing. Actual input is CHANNEL0
-	singleInit.input      = adcSingleInpVDDDiv3;
+	//singleInit.input      = adcSingleInpVDDDiv3;
+	singleInit.input      = adcSingleInputCh0;
 
 	/* The datasheet specifies a minimum aquisition time when sampling VDD/3 */
 	/* 32 cycles should be safe for all ADC clock frequencies */
@@ -99,6 +124,19 @@ void adcSetup(void) {
  */
 void dacSetup(void) {
 	// TODO: setup the DAC!
+	CMU_ClockEnable(cmuClock_DAC0, true);
+
+	DAC_Init_TypeDef init = DAC_INIT_DEFAULT;
+	DAC_InitChannel_TypeDef channelInit = DAC_INITCHANNEL_DEFAULT;
+
+	// DAC setup
+	init.outMode = dacOutputPin;
+	init.reference = dacRefVDD;
+	init.convMode = dacConvModeContinuous;
+	channelInit.enable = true;
+
+	DAC_Init(DAC0, &init);
+	DAC_InitChannel(DAC0, &channelInit, 0);
 }
 
 /**
