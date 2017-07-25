@@ -18,13 +18,13 @@
 #define ADC_CLOCK 11e6
 
 // Evil global variable for the sample we're gathering
-uint16_t sampleValue;
+volatile uint16_t sampleValue;
 
 // Evil counter variable
-int counter = 0;
+volatile int counter = 0;
 
 // Evil buffer
-uint16_t delaySamples[4000];
+volatile uint16_t delaySamples[10000];
 
 /**
  * Even IRQ handler for GPIO pins
@@ -46,24 +46,36 @@ void GPIO_ODD_IRQHandler(void) {
  */
 void TIMER0_IRQHandler(void) {
 	TIMER0->IFC |= TIMER0->IF;
+
+	// Scan the ADC channels in here
+	ADC_Start(ADC0, adcStartSingle);
+
+	/* Wait while conversion is active */
+	while (ADC0->STATUS & ADC_STATUS_SINGLEACT){}
+
+	/* Get ADC result */
+	sampleValue = ADC_DataSingleGet(ADC0);
+
+
 	if(counter == 3999) {
 		counter = 0;
 	} else {
 		counter++;
 	}
 
-	int output = 0;
 	// TODO: Processing of input signal, checking of potentiometers, checking of modulation switch
 	// When pinging the ADC channel for the potentiometers, need to change
 	// which channel the ADC scan originates from
-	(counter == 0) ? output = sampleValue + 0.9*delaySamples[4000-1] : output = sampleValue + 0.9*delaySamples[counter];
-	/*if(counter == 0) {
-		DAC0->CH0DATA = output << 1;
+	int output = 0;
+	if(counter == 0) {
+		output = sampleValue + 0.3*delaySamples[9999];
 	} else {
-		DAC0->CH0DATA = output << 1;
-	}*/
+		output = sampleValue + 0.3*delaySamples[counter];
+	}
 
-	DAC0->CH0DATA = sampleValue;
+	DAC0->CH0DATA = output << 1;
+
+	//DAC0->CH0DATA = sampleValue;
 
 	delaySamples[counter] = output << 1;
 }
@@ -81,6 +93,9 @@ void gpioSetup(void) {
 
 	GPIO_PinModeSet(gpioPortB, 10, gpioModeInput, 1);
 	GPIO_IntConfig(gpioPortB, 10, false, true, true);
+
+	GPIO_PinModeSet(gpioPortD, 0, gpioModeInput, 0);
+	GPIO_PinModeSet(gpioPortB, 11, gpioModePushPull, 0);
 
 	/* Enable interrupt in core for even and odd GPIO interrupts */
 	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
@@ -179,14 +194,5 @@ int main(void)
 	timerSetup();
 
 	/* Infinite loop */
-	while (1) {
-		// Scan the ADC channels in here
-		ADC_Start(ADC0, adcStartSingle);
-
-		/* Wait while conversion is active */
-		while (ADC0->STATUS & ADC_STATUS_SINGLEACT){}
-
-		/* Get ADC result */
-		sampleValue = ADC_DataSingleGet(ADC0);
-	}
+	while (1) { }
 }
